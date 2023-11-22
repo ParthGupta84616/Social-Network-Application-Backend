@@ -4,7 +4,7 @@ from flask_pymongo import PyMongo
 from flask_restful import Resource, Api
 from Verify import is_valid_email, send_email,is_valid_password,generate_access_token
 import random
-from flask_jwt_extended import JWTManager
+from flask_jwt_extended import JWTManager, get_jwt_identity
 
 app = Flask(__name__)
 app.config['MONGO_URI'] = 'mongodb://localhost:27017/social_network'
@@ -165,6 +165,40 @@ class ResetPassword(Resource):
         else:
             return {'message':'Invalid Password'},400
 
+class Profile(Resource):
+    @jwt_required()
+    def get(self):
+        current_user = get_jwt_identity()
+
+
+        user_profile = mongo.db.users.find_one({'username': current_user})
+
+        if user_profile:
+            return {
+                'display_picture': user_profile.get('display_picture', None),
+                'username': user_profile.get('username', None),
+                'email': user_profile.get('Email', None),
+                'country': user_profile.get('country', None),
+                'friends': user_profile.get('friends', None),
+                'tweets': user_profile.get('tweets', None),
+                'reels': user_profile.get('reels', None)
+        else:
+            return {'message': 'User not found'}, 404
+
+    @jwt_required()
+    def put(self):
+        current_user = get_jwt_identity()
+        data = request.get_json()
+
+        # Update the user profile in the database
+        result = users_collection.update_one({'username': current_user}, {'$set': data})
+
+        if result.modified_count > 0:
+            return {'message': 'Profile updated successfully'}, 200
+        else:
+            return {'message': 'User not found or no changes made'}, 404
+
+
 
 api.add_resource(Register, '/register')
 api.add_resource(RegisterVerify, '/register_verify/<username>')
@@ -174,6 +208,9 @@ api.add_resource(Login, '/login')
 api.add_resource(ForgetPassword, '/forget_password')
 # input as password
 api.add_resource(ResetPassword, '/reset_password/<username>')
+# field to get or post "username","email","display_picture","country","friends","tweets","reels"
+api.add_resource(Profile, '/profile')
+
 
 if __name__ == '__main__':
     app.run(debug=True)
