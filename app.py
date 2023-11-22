@@ -4,7 +4,7 @@ from flask_pymongo import PyMongo
 from flask_restful import Resource, Api
 from Verify import is_valid_email, send_email,is_valid_password,generate_access_token
 import random
-from flask_jwt_extended import JWTManager, get_jwt_identity
+from flask_jwt_extended import JWTManager, get_jwt_identity, jwt_required
 
 app = Flask(__name__)
 app.config['MONGO_URI'] = 'mongodb://localhost:27017/social_network'
@@ -172,6 +172,9 @@ class Profile(Resource):
 
 
         user_profile = mongo.db.users.find_one({'username': current_user})
+        number_friends = len(user_profile.get('friends', []))
+        number_tweets = len(user_profile.get('tweets', []))
+        number_reels = len(user_profile.get('reels', []))
 
         if user_profile:
             return {
@@ -179,9 +182,10 @@ class Profile(Resource):
                 'username': user_profile.get('username', None),
                 'email': user_profile.get('Email', None),
                 'country': user_profile.get('country', None),
-                'friends': user_profile.get('friends', None),
-                'tweets': user_profile.get('tweets', None),
-                'reels': user_profile.get('reels', None)
+                'number-friends': number_friends,
+                'number-tweets': number_tweets,
+                'number-reels': number_reels
+            }
         else:
             return {'message': 'User not found'}, 404
 
@@ -191,7 +195,7 @@ class Profile(Resource):
         data = request.get_json()
 
         # Update the user profile in the database
-        result = users_collection.update_one({'username': current_user}, {'$set': data})
+        result = (mongo.db.users.update_one({'username': current_user}, {'$set': data}))
 
         if result.modified_count > 0:
             return {'message': 'Profile updated successfully'}, 200
