@@ -6,6 +6,7 @@ from email.mime.multipart import MIMEMultipart
 from flask_jwt_extended import create_access_token
 from flask_jwt_extended import JWTManager
 from datetime import timedelta
+import time
 
 def is_valid_email(email):
     """
@@ -53,7 +54,6 @@ def send_email(to_email, subject, body):
     except Exception as e:
         print(f"Error sending email: {e}")
         return False
-import re
 
 def is_valid_password(password):
     # Check if the password is at least 8 characters long
@@ -87,3 +87,10 @@ def generate_access_token(username):
     # Create and return the access token
     access_token = create_access_token(identity=username, expires_delta=expires)
     return access_token
+
+
+def set_true_after_5_minutes():
+    flag = False
+    time.sleep(120)
+    flag = True
+    return flag

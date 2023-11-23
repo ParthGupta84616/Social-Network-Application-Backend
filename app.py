@@ -2,7 +2,7 @@ from flask import Flask, request,jsonify
 from flask_bcrypt import Bcrypt
 from flask_pymongo import PyMongo
 from flask_restful import Resource, Api
-from Verify import is_valid_email, send_email,is_valid_password,generate_access_token
+from Verify import is_valid_email, send_email,is_valid_password,generate_access_token, set_true_after_5_minutes
 import random
 from flask_jwt_extended import JWTManager, get_jwt_identity, jwt_required
 
@@ -68,6 +68,9 @@ class RegisterVerify(Resource):
                         'verification_code': code
                     }
                     mongo.db.junk.insert_one(user_junk)
+                    if set_true_after_5_minutes():
+                        mongo.db.junk.delete_one({'verification_code': code})
+
                     return {'message': 'Verification Code Sent'}
                 else:
                     return {'message': 'Invalid Email'}
@@ -135,6 +138,8 @@ class ForgetPassword(Resource):
                 'verification_code': code
             }
             mongo.db.junk.insert_one(user_junk)
+            if set_true_after_5_minutes():
+                mongo.db.junk.delete_one({'verification_code': code})
             return {'message': 'Verification Mail Sent'}, 201
         else:
             try:
@@ -142,7 +147,6 @@ class ForgetPassword(Resource):
                 if code:
                     user_junk = mongo.db.junk.find_one({'verification_code': code})
                     if user_junk:
-                        mongo.db.junk.delete_one({'verification_code': code})
                         return {'message': 'User Verified', 'username': user_junk['username']}, 200
                     else:
                         return {'message': 'Invalid Code'}, 400
@@ -201,6 +205,10 @@ class Profile(Resource):
             return {'message': 'Profile updated successfully'}, 200
         else:
             return {'message': 'User not found or no changes made'}, 404
+
+class Reels(Resource):
+    
+    
 
 
 
