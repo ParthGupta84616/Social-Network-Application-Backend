@@ -176,7 +176,8 @@ class Profile(Resource):
 
 
         user_profile = mongo.db.users.find_one({'username': current_user})
-        number_friends = len(user_profile.get('friends', []))
+        number_followers = len(user_profile.get('follower', []))
+        number_followings = len(user_profile.get('following', []))
         number_tweets = len(user_profile.get('tweets', []))
         number_reels = len(user_profile.get('reels', []))
 
@@ -186,7 +187,8 @@ class Profile(Resource):
                 'username': user_profile.get('username', None),
                 'email': user_profile.get('Email', None),
                 'country': user_profile.get('country', None),
-                'number-friends': number_friends,
+                'follower': number_followers,
+                'following': number_followings,
                 'number-tweets': number_tweets,
                 'number-reels': number_reels
             }
@@ -197,8 +199,6 @@ class Profile(Resource):
     def put(self):
         current_user = get_jwt_identity()
         data = request.get_json()
-
-        # Update the user profile in the database
         result = (mongo.db.users.update_one({'username': current_user}, {'$set': data}))
 
         if result.modified_count > 0:
@@ -206,10 +206,52 @@ class Profile(Resource):
         else:
             return {'message': 'User not found or no changes made'}, 404
 
-class Reels(Resource):
-    
-    
+class Visit_Profile(Resource):
+    @jwt_required()
+    def get(self, username):
+        user_profile = mongo.db.users.find_one({'username': username})
 
+        if user_profile:
+            number_followers = len(user_profile.get('follower', []))
+            number_followings = len(user_profile.get('following', []))
+            number_tweets = len(user_profile.get('tweets', []))
+            number_reels = len(user_profile.get('reels', []))
+
+            return {
+                'display_picture': user_profile.get('display_picture', None),
+                'username': user_profile.get('username', None),
+                'email': user_profile.get('Email', None),
+                'country': user_profile.get('country', None),
+                'follower': number_followers,
+                'following': number_followings,
+                'number_tweets': number_tweets,
+                'number_reels': number_reels
+            }, 200
+        else:
+            return {'message': 'User not found'}, 404
+    @jwt_required()
+    def post(self,username):
+        data = request.get_json()
+        if data["click"]:
+            current_user = get_jwt_identity()
+            user_profile = mongo.db.users.find_one({'username': current_user})
+            friends_profile = mongo.db.users.find_one({'username': username})
+            if current_user in user_profile['follower']:
+                return{'message' : 'Already A Follower'}
+            elif current_user not in friends_profile['friends']:
+                mongo.db.users.update_one(
+                    {'username': username},
+                    {'$append': {'follower': current_user}}
+                )
+                mongo.db.users.update_one(
+                    {'username': current_user},
+                    {'$append': {'following': username}}
+                )
+                return {'message':f'You Are Now Following {username}'}, 201
+            else:
+                return {'message':'Invalid Request'},400
+        else:
+            return {'message': 'Invalid Request'}, 400
 
 
 api.add_resource(Register, '/register')
@@ -222,7 +264,6 @@ api.add_resource(ForgetPassword, '/forget_password')
 api.add_resource(ResetPassword, '/reset_password/<username>')
 # field to get or post "username","email","display_picture","country","friends","tweets","reels"
 api.add_resource(Profile, '/profile')
-
-
+api.add_resource(Visit_Profile, '/profile/<username>')
 if __name__ == '__main__':
     app.run(debug=True)
